@@ -83,6 +83,33 @@ query($owner: String!, $repo: String!, $number: Int!, $cursor: String) {
 }
 ```
 
+Fetch each subsequent comments/replies page for a thread with its thread ID and the prior page's `endCursor`:
+
+```graphql
+query($threadId: ID!, $replyCursor: String) {
+  node(id: $threadId) {
+    ... on PullRequestReviewThread {
+      comments(first: 100, after: $replyCursor) {
+        nodes {
+          id
+          databaseId
+          url
+          body
+          createdAt
+          author {
+            login
+          }
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  }
+}
+```
+
 Paginate review threads while `reviewThreads.pageInfo.hasNextPage` is true. If a thread's `comments.pageInfo.hasNextPage` is true, query that thread's comments connection separately with `after` set to that connection's `endCursor` (the reply cursor), and continue until all replies are loaded.
 
 Maintain a working ledger with:

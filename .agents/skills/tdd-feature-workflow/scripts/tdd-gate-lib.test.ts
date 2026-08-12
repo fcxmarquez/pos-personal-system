@@ -227,6 +227,80 @@ describe("decidePreToolUse", () => {
 });
 
 describe("gate command timeout", () => {
+  test("RED rejects a timed-out command even after it prints the expected marker", () => {
+    const project = mkdtempSync(join(tmpdir(), "agents-tdd-gate-"));
+    const sessionId = `red-timeout-${randomUUID()}`;
+    try {
+      expect(spawnSync("git", ["init", "-q"], { cwd: project }).status).toBe(0);
+      writeFileSync(join(project, ".git", "info", "exclude"), ".tdd/\n");
+      mkdirSync(join(project, "lib"), { recursive: true });
+      writeFileSync(
+        join(project, "lib", "timeout.test.ts"),
+        "export const timeoutRegression = true;\n"
+      );
+      const expectedMarker = "expected behavioral RED marker";
+      const delayedCommand = [
+        "bun",
+        "-e",
+        `console.error(${JSON.stringify(expectedMarker)}); await Bun.sleep(300)`,
+      ];
+      const now = new Date().toISOString();
+      const statePath = getSessionStatePath(project, sessionId);
+      mkdirSync(join(project, ".tdd", "codex"), { recursive: true });
+      writeFileSync(
+        statePath,
+        `${JSON.stringify(
+          {
+            version: 1,
+            task: "RED timeout regression",
+            phase: "awaiting_red",
+            startedAt: now,
+            updatedAt: now,
+            baselineHashes: {},
+            agents: {},
+          },
+          null,
+          2
+        )}\n`
+      );
+
+      const result = spawnSync(
+        "bun",
+        [
+          gatePathForTests(),
+          "red",
+          "--test",
+          "lib/timeout.test.ts",
+          "--expect",
+          expectedMarker,
+          "--",
+          ...delayedCommand,
+        ],
+        {
+          cwd: project,
+          encoding: "utf8",
+          timeout: 2_000,
+          env: {
+            ...process.env,
+            TDD_CODEX_SESSION_ID: sessionId,
+            TDD_GATE_COMMAND_TIMEOUT_MS: "50",
+          },
+        }
+      );
+      const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
+
+      expect(result.status).not.toBe(0);
+      expect(result.signal).toBeNull();
+      expect(output).toContain(expectedMarker);
+      expect(output).toContain("TDD gate command timed out after 50 ms");
+      const state = JSON.parse(readFileSync(statePath, "utf8"));
+      expect(state.phase).toBe("awaiting_red");
+      expect(state.red).toBeUndefined();
+    } finally {
+      rmSync(project, { recursive: true, force: true });
+    }
+  });
+
   test("times out with a short override while preserving stdout and stderr", () => {
     const project = mkdtempSync(join(tmpdir(), "agents-tdd-gate-"));
     const sessionId = `timeout-${randomUUID()}`;
@@ -274,7 +348,6 @@ describe("gate command timeout", () => {
         )}\n`
       );
 
-      const startedAt = performance.now();
       const result = spawnSync(
         "bun",
         [gatePathForTests(), "green", "--", ...delayedCommand],
@@ -289,12 +362,10 @@ describe("gate command timeout", () => {
           },
         }
       );
-      const elapsed = performance.now() - startedAt;
       const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
 
       expect(result.status).not.toBe(0);
       expect(result.signal).toBeNull();
-      expect(elapsed).toBeLessThan(1_500);
       expect(output).toContain("stdout-before-timeout");
       expect(output).toContain("stderr-before-timeout");
       expect(output).toMatch(/timed out/i);

@@ -33,6 +33,12 @@ interface CommandEvidence {
   verifiedAt: string;
 }
 
+interface CommandResult {
+  exitCode: number;
+  output: string;
+  timedOut: boolean;
+}
+
 interface AgentContext {
   agentId: string;
   turnId?: string;
@@ -189,6 +195,10 @@ function proveRed(commandArgs: string[], statePath: string): void {
     (path) => hashPath(path) !== state.baselineHashes[path]
   );
   const result = runCommand(command);
+  if (result.timedOut) {
+    fail(`RED rejected: focused test command timed out.\n\n${excerpt(result.output)}`);
+  }
+
   const decision = evaluateRed({
     exitCode: result.exitCode,
     output: result.output,
@@ -617,7 +627,7 @@ function normalizeProjectPath(path: string): string {
   return normalized.replaceAll("\\", "/").replace(/^\.\//, "");
 }
 
-function runCommand(command: string[]): { exitCode: number; output: string } {
+function runCommand(command: string[]): CommandResult {
   const timeoutMs = gateCommandTimeoutMs();
   const result = spawnSync(command[0], command.slice(1), {
     cwd: projectDir,
@@ -625,12 +635,27 @@ function runCommand(command: string[]): { exitCode: number; output: string } {
     env: process.env,
     timeout: timeoutMs,
   });
-  const timedOut = result.error?.code === "ETIMEDOUT";
+  const timedOut =
+    (isErrnoException(result.error) && result.error.code === "ETIMEDOUT") ||
+    exitedDueToTimeout(result);
   const timeoutOutput = timedOut
     ? `\nTDD gate command timed out after ${timeoutMs} ms.\n`
     : "";
   const output = `${result.stdout ?? ""}${result.stderr ?? ""}${timeoutOutput}`;
-  return { exitCode: result.status ?? 1, output };
+  return { exitCode: timedOut ? 1 : (result.status ?? 1), output, timedOut };
+}
+
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && "code" in error;
+}
+
+function exitedDueToTimeout(result: unknown): boolean {
+  return (
+    typeof result === "object" &&
+    result !== null &&
+    "exitedDueToTimeout" in result &&
+    result.exitedDueToTimeout === true
+  );
 }
 
 function gateCommandTimeoutMs(): number {

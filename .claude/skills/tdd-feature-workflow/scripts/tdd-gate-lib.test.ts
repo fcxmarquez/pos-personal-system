@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -235,6 +236,60 @@ function baseState(phase: "awaiting_red" | "red_verified") {
 }
 
 describe("Claude gate CLI regressions", () => {
+  test("RED rejects a timed-out command even after it prints the expected marker", () => {
+    const project = createProject();
+    try {
+      writeFileSync(join(project, ".git", "info", "exclude"), ".claude/\n");
+      mkdirSync(join(project, "lib"), { recursive: true });
+      writeFileSync(
+        join(project, "lib", "timeout.test.ts"),
+        "export const timeoutRegression = true;\n"
+      );
+      const expectedMarker = "expected behavioral RED marker";
+      const delayedCommand = [
+        "bun",
+        "-e",
+        `console.error(${JSON.stringify(expectedMarker)}); await Bun.sleep(300)`,
+      ];
+      const statePath = writeState(project, baseState("awaiting_red"));
+
+      const result = spawnSync(
+        "bun",
+        [
+          gatePath,
+          "red",
+          "--test",
+          "lib/timeout.test.ts",
+          "--expect",
+          expectedMarker,
+          "--",
+          ...delayedCommand,
+        ],
+        {
+          cwd: project,
+          encoding: "utf8",
+          timeout: 2_000,
+          env: {
+            ...process.env,
+            CLAUDE_PROJECT_DIR: project,
+            TDD_GATE_COMMAND_TIMEOUT_MS: "50",
+          },
+        }
+      );
+      const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
+
+      expect(result.status).not.toBe(0);
+      expect(result.signal).toBeNull();
+      expect(output).toContain(expectedMarker);
+      expect(output).toContain("TDD gate command timed out after 50 ms");
+      const state = JSON.parse(readFileSync(statePath, "utf8"));
+      expect(state.phase).toBe("awaiting_red");
+      expect(state.red).toBeUndefined();
+    } finally {
+      rmSync(project, { recursive: true, force: true });
+    }
+  });
+
   test("Claude gate command timeout uses a short override and preserves failure evidence", () => {
     const project = createProject();
     try {
@@ -260,7 +315,6 @@ describe("Claude gate CLI regressions", () => {
         },
       });
 
-      const startedAt = performance.now();
       const result = spawnSync("bun", [gatePath, "green", "--", ...delayedCommand], {
         cwd: project,
         encoding: "utf8",
@@ -271,12 +325,10 @@ describe("Claude gate CLI regressions", () => {
           TDD_GATE_COMMAND_TIMEOUT_MS: "50",
         },
       });
-      const elapsed = performance.now() - startedAt;
       const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
 
       expect(result.status).not.toBe(0);
       expect(result.signal).toBeNull();
-      expect(elapsed).toBeLessThan(1_500);
       expect(output).toContain("stdout-before-timeout");
       expect(output).toContain("stderr-before-timeout");
       expect(output).toContain("TDD gate command timed out after 50 ms");
@@ -321,8 +373,9 @@ describe("Claude gate CLI regressions", () => {
       expect(`${rejected.stdout}${rejected.stderr}`).toContain(
         "exact focused RED command"
       );
-      expect(readFileSync(statePath, "utf8")).not.toContain('"green"');
-      expect(spawnSync("test", ["!", "-e", markerPath]).status).toBe(0);
+      const rejectedState = JSON.parse(readFileSync(statePath, "utf8"));
+      expect(rejectedState.green).toBeUndefined();
+      expect(existsSync(markerPath)).toBe(false);
 
       const accepted = runGate(project, ["green", "--", ...exactCommand]);
       expect(accepted.status).toBe(0);

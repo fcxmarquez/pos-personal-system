@@ -17,6 +17,7 @@
     "typecheck:agent": "tsc -p langgraph/tsconfig.json",
     "typecheck": "bun run typecheck:app && bun run typecheck:agent",
     "test": "bun test",
+    "test:agent-workflow": "bun test ./.agents/skills/tdd-feature-workflow/scripts/tdd-gate-lib.test.ts ./.claude/skills/tdd-feature-workflow/scripts/tdd-gate-lib.test.ts ./.claude/skills/engage-pr-comments/SKILL.test.ts",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "agent:dev": "langgraphjs dev --port 8123"

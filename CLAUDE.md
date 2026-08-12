@@ -74,10 +74,6 @@ GitHub Actions (`.github/workflows/ci.yml`) runs lint and build on push/PR to `m
 
 - Neon PostgreSQL is used as the database.
 
-### Database Agent Routing
-
-- Delegate every database-related task to the `neon-database` project agent before performing database work.
-
 ## Code Workflow
 
 ### Git Workflow

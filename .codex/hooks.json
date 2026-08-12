@@ -1,0 +1,68 @@
+{
+  "hooks": {
+    "SubagentStart": [
+      {
+        "matcher": "^(test-engineer|feature-engineer)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"$(git rev-parse --show-toplevel)/.agents/skills/tdd-feature-workflow/scripts/tdd-gate.ts\" hook-subagent-start",
+            "timeout": 10,
+            "statusMessage": "Registering TDD worker"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "^(Bash|apply_patch)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"$(git rev-parse --show-toplevel)/.agents/skills/tdd-feature-workflow/scripts/tdd-gate.ts\" hook-pre-tool",
+            "timeout": 10,
+            "statusMessage": "Checking TDD phase ownership"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "^(Bash|apply_patch)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"$(git rev-parse --show-toplevel)/.agents/skills/tdd-feature-workflow/scripts/tdd-gate.ts\" hook-post-tool",
+            "timeout": 10,
+            "statusMessage": "Validating TDD state"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "^(test-engineer|feature-engineer)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"$(git rev-parse --show-toplevel)/.agents/skills/tdd-feature-workflow/scripts/tdd-gate.ts\" hook-subagent-stop",
+            "timeout": 10,
+            "statusMessage": "Checking TDD worker gate"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"$(git rev-parse --show-toplevel)/.agents/skills/tdd-feature-workflow/scripts/tdd-gate.ts\" hook-stop",
+            "timeout": 10,
+            "statusMessage": "Checking TDD completion gate"
+          }
+        ]
+      }
+    ]
+  }
+}

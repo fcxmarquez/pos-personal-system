@@ -1,0 +1,6 @@
+interface:
+  display_name: "Engage PR Comments"
+  short_description: "Discuss, fix, and resolve PR feedback"
+  default_prompt: "Use $engage-pr-comments to discuss the current PR feedback with reviewers, implement agreed fixes, and resolve only after consensus."
+policy:
+  allow_implicit_invocation: false

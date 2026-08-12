@@ -1,0 +1,4 @@
+interface:
+  display_name: "TDD Feature Workflow"
+  short_description: "Mechanically gated RED-GREEN feature delivery"
+  default_prompt: "Use $tdd-feature-workflow to implement this behavior through the mechanically gated TDD workflow."

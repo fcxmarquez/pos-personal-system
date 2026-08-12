@@ -316,7 +316,7 @@ export function VentasScreen() {
       {/* Mobile cart drawer (slides up from bottom) */}
       <div
         className={cn(
-          "fixed inset-x-0 bottom-0 z-40 flex max-h-[85dvh] flex-col rounded-t-xl bg-card pb-[constant(safe-area-inset-bottom)] pb-[env(safe-area-inset-bottom,0px)] shadow-xl transition-transform duration-300 md:hidden",
+          "fixed inset-x-0 bottom-0 z-40 flex h-[85dvh] flex-col rounded-t-xl bg-card pb-[constant(safe-area-inset-bottom)] pb-[env(safe-area-inset-bottom,0px)] shadow-xl transition-transform duration-300 md:hidden",
           mobileCartOpen ? "translate-y-0" : "translate-y-full"
         )}
       >

@@ -60,7 +60,7 @@ export function CartPanel({ onCheckout, onCancelSale, onClose }: CartPanelProps)
 
       <DiscountControl />
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         {cart.length === 0 ? (
           <div className="flex flex-col items-center justify-center px-5 py-16 text-center">
             <ShoppingBag

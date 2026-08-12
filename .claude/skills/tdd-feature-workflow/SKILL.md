@@ -64,6 +64,8 @@ The coordinator is the hub. It owns phase transitions, worker invocation, worker
 
 The gate persists the first `test-engineer` and `feature-engineer` worker IDs in its local workflow state. When a phase must be revisited, use the harness's existing-worker continuation or messaging mechanism with the recorded ID so the worker resumes its prior context. Do not spawn a replacement merely because a later gate fails. If the harness cannot resume workers, report that limitation instead of silently discarding context.
 
+Workflow state is scoped to the coordinator session and its workers. Concurrent coordinator sessions in the same checkout must not share phases, blockers, or worker IDs. The lifecycle adapter supplies this session identity automatically; do not invent or reuse it.
+
 ## Phase 0: establish or resume state
 
 First inspect the state:

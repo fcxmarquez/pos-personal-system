@@ -192,11 +192,23 @@ describe("Claude hook configuration", () => {
   test("checks Bash mutations after successful and failed tool calls", () => {
     const skill = readFileSync(join(import.meta.dir, "..", "SKILL.md"), "utf8");
 
-    expect(skill).toMatch(
-      /PostToolUse:\s*\n\s+- matcher: "Edit\|Write\|Bash"[\s\S]*?- hook-post-tool/
+    const hookBlock = (name: "PostToolUse" | "PostToolUseFailure") => {
+      const marker = `  ${name}:\n`;
+      const start = skill.indexOf(marker);
+      expect(start, `Expected ${name} hook block`).toBeGreaterThanOrEqual(0);
+      if (start === -1) return "";
+
+      const remainder = skill.slice(start + marker.length);
+      const nextHook = remainder.search(/^ {2}[A-Za-z][\w-]*:\s*$/m);
+      return nextHook === -1 ? remainder : remainder.slice(0, nextHook);
+    };
+
+    expect(hookBlock("PostToolUse")).toMatch(
+      /matcher: "Edit\|Write\|Bash"[\s\S]*?- hook-post-tool/
     );
-    expect(skill).toMatch(
-      /PostToolUseFailure:\s*\n\s+- matcher: "Edit\|Write\|Bash"[\s\S]*?- hook-post-tool/
+    // biome-ignore lint/security/noSecrets: Claude hook event name, not a secret.
+    expect(hookBlock("PostToolUseFailure")).toMatch(
+      /matcher: "Edit\|Write\|Bash"[\s\S]*?- hook-post-tool/
     );
   });
 });

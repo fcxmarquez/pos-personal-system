@@ -188,6 +188,19 @@ describe("decidePreToolUse", () => {
 
 const gatePath = join(import.meta.dir, "tdd-gate.ts");
 
+describe("Claude hook configuration", () => {
+  test("checks Bash mutations after successful and failed tool calls", () => {
+    const skill = readFileSync(join(import.meta.dir, "..", "SKILL.md"), "utf8");
+
+    expect(skill).toMatch(
+      /PostToolUse:\s*\n\s+- matcher: "Edit\|Write\|Bash"[\s\S]*?- hook-post-tool/
+    );
+    expect(skill).toMatch(
+      /PostToolUseFailure:\s*\n\s+- matcher: "Edit\|Write\|Bash"[\s\S]*?- hook-post-tool/
+    );
+  });
+});
+
 function createProject(): string {
   const project = mkdtempSync(join(tmpdir(), "claude-tdd-gate-"));
   expect(spawnSync("git", ["init", "-q"], { cwd: project }).status).toBe(0);

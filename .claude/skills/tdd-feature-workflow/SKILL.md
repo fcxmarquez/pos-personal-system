@@ -21,7 +21,16 @@ hooks:
             - hook-pre-tool
           timeout: 10
   PostToolUse:
-    - matcher: "Edit|Write"
+    - matcher: "Edit|Write|Bash"
+      hooks:
+        - type: command
+          command: bun
+          args:
+            - "${CLAUDE_PROJECT_DIR}/.claude/skills/tdd-feature-workflow/scripts/tdd-gate.ts"
+            - hook-post-tool
+          timeout: 10
+  PostToolUseFailure:
+    - matcher: "Edit|Write|Bash"
       hooks:
         - type: command
           command: bun

@@ -188,6 +188,31 @@ describe("decidePreToolUse", () => {
 
 const gatePath = join(import.meta.dir, "tdd-gate.ts");
 
+describe("Claude hook configuration", () => {
+  test("checks Bash mutations after successful and failed tool calls", () => {
+    const skill = readFileSync(join(import.meta.dir, "..", "SKILL.md"), "utf8");
+
+    const hookBlock = (name: "PostToolUse" | "PostToolUseFailure") => {
+      const marker = `  ${name}:\n`;
+      const start = skill.indexOf(marker);
+      expect(start, `Expected ${name} hook block`).toBeGreaterThanOrEqual(0);
+      if (start === -1) return "";
+
+      const remainder = skill.slice(start + marker.length);
+      const nextHook = remainder.search(/^ {2}[A-Za-z][\w-]*:\s*$/m);
+      return nextHook === -1 ? remainder : remainder.slice(0, nextHook);
+    };
+
+    expect(hookBlock("PostToolUse")).toMatch(
+      /matcher: "Edit\|Write\|Bash"[\s\S]*?- hook-post-tool/
+    );
+    // biome-ignore lint/security/noSecrets: Claude hook event name, not a secret.
+    expect(hookBlock("PostToolUseFailure")).toMatch(
+      /matcher: "Edit\|Write\|Bash"[\s\S]*?- hook-post-tool/
+    );
+  });
+});
+
 function createProject(): string {
   const project = mkdtempSync(join(tmpdir(), "claude-tdd-gate-"));
   expect(spawnSync("git", ["init", "-q"], { cwd: project }).status).toBe(0);
